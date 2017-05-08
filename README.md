@@ -14,6 +14,14 @@ Requirements
 * Socket
 
 
+Vendor Support
+--------------
+The following has been verified to be working based on recent equipment and recent code.
+* Cisco
+* Juniper
+* Generic BGP4-MIB (RFC4273) support
+
+
 Installation
 -------------
 
