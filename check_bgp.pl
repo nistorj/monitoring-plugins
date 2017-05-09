@@ -6,13 +6,13 @@
 # Author:	Jon Nistor (nistor@snickers.org)
 # Purporse:	Monitoring Plugin to check for BGP sessions (v4/v6) and alert
 #		if the prefix count is above or below a threshold.
-# MIB:		Based on CISCO-BGP4-MIB, BGP4-V2-MIB-JUNIPER, BGP4V2-MIB
-# Vendors:	Cisco, Juniper, Brocade
+# MIB:		Based on CISCO-BGP4-MIB, BGP4-V2-MIB-JUNIPER, BGP4V2-MIB, ARISTA-BGP4V2-MIB
+# Vendors:	Cisco, Juniper, Arista, Brocade
 #
 # Version:	0.03
 #
 # History:
-#  2017-05-08	0.03	Added support for Brocade
+#  2017-05-08	0.03	Added support for Arista, Brocade
 #  2017-05-04	0.02	Modified to support multiple vendors
 #  2017-04-29	0.01	Initial
 #
