@@ -14,13 +14,11 @@ These monitoring tools are based on perl.  Some monitoring systems support embed
 
 ## check_bgp: BGP
 
-Perl Modules
-------------
+#### Perl Modules
  Monitoring::Plugin, Net::IP, Net::SNMP, Socket
 
 
-Vendor Support
---------------
+#### Vendor Support
 The following has been verified to be working based on recent equipment and recent code.
 * Arista
 * Brocade
@@ -28,13 +26,11 @@ The following has been verified to be working based on recent equipment and rece
 * Juniper
 * Generic BGP4-MIB (RFC4273) support
 
-Installation
--------------
+#### Installation
 
 === Work in progress ===
 
-Configuration
--------------
+#### Configuration
 
 There are a few variables which can be used tweaked for the different environments.
 
@@ -44,8 +40,8 @@ The peerip variable supports both IPv4 and IPv6 address notation.  An error is r
 ```
 
 
-Configuration Examples
-----------------------
+#### Configuration Examples
+
 
 Example 1: IPv4 peer, auto-detect router type.
 ```
@@ -93,4 +89,5 @@ object Service "BGP-Customer-B" {
 	vars.bgp_warn    = 130
 }
 ```
+
 
