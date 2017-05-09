@@ -6,12 +6,13 @@
 # Author:	Jon Nistor (nistor@snickers.org)
 # Purporse:	Monitoring Plugin to check for BGP sessions (v4/v6) and alert
 #		if the prefix count is above or below a threshold.
-# MIB:		Based on CISCO-BGP4-MIB, BGP4-V2-MIB-JUNIPER
-# Vendors:	Cisco, Juniper, generic BGP4-MIB
+# MIB:		Based on CISCO-BGP4-MIB, BGP4-V2-MIB-JUNIPER, BGP4V2-MIB
+# Vendors:	Cisco, Juniper, Brocade
 #
-# Version:	0.02
+# Version:	0.03
 #
 # History:
+#  2017-05-08	0.03	Added support for Brocade
 #  2017-05-04	0.02	Modified to support multiple vendors
 #  2017-04-29	0.01	Initial
 #
@@ -39,6 +40,10 @@
 #	  ... if available also ..
 #	localAddr	=> IP representation
 #	localAddrOID	=> OID representation of IP address
+# --
+# BASED ON SNMP OUTPUT FROM VARIOUS VENDORS, OPTIMIZATIONS COULD BE DONE.
+# [maybe later?]
+#
 
 use Monitoring::Plugin;
 use Monitoring::Plugin::Getopt;
@@ -48,7 +53,7 @@ use Net::SNMP qw(oid_lex_sort);
 use Socket;
 #
 use strict;
-use constant VERSION => '0.02';
+use constant VERSION => '0.03';
 
 $SIG{'ALRM'} = sub {
 	plugin_exit( UNKNOWN, "Plugin took too long to complete (alarm)");
@@ -251,6 +256,7 @@ my %bgpOIDtable	= (
 	# NOTE: Using the BGP4-MIB (https://tools.ietf.org/html/rfc4273)
 	#	-
 	#	This MIB does NOT support Prefix counts.
+	'sysObjectID'			=> '1.3.6.1.2.1.1.2.0',
 	'bgpLocalAs'			=> '1.3.6.1.2.1.15.2.0',
 
 	'generic'			=> '1.3.6.1.2.1.15.3.1.2', # used for auto-detect
@@ -260,6 +266,29 @@ my %bgpOIDtable	= (
 	'bgpPeerRemoteAddr'		=> '1.3.6.1.2.1.15.3.1.7',
 	'bgpPeerRemoteAs'		=> '1.3.6.1.2.1.15.3.1.9',
 	'bgpPeerLastError'		=> '1.3.6.1.2.1.15.3.1.14',
+
+
+	# -----------------------------------------------------------------------------
+	# ARISTA
+	# NOTE: Based on ARISTA-BGP4V2-MIB
+	'arista'			   => '1.3.6.1.4.1.30065.4.1.1.2.1.13',
+	'aristaBgp4V2PeerTable'		   => '1.3.6.1.4.1.30065.4.1.1.2',
+
+	'aristaBgp4V2PeerLocalAddrType'	   => '1.3.6.1.4.1.30065.4.1.1.2.1.2',
+	'aristaBgp4V2PeerLocalAddr'	   => '1.3.6.1.4.1.30065.4.1.1.2.1.3',
+	'aristaBgp4V2PeerRemoteAddrType'   => '1.3.6.1.4.1.30065.4.1.1.2.1.4',
+	'aristaBgp4V2PeerRemoteAddr'	   => '1.3.6.1.4.1.30065.4.1.1.2.1.5',
+	'aristaBgp4V2PeerLocalAs'	   => '1.3.6.1.4.1.30065.4.1.1.2.1.7',
+	'aristaBgp4V2PeerRemoteAs'	   => '1.3.6.1.4.1.30065.4.1.1.2.1.10',
+	'aristaBgp4V2PeerAdminStatus'	   => '1.3.6.1.4.1.30065.4.1.1.2.1.12',
+	'aristaBgp4V2PeerState'		   => '1.3.6.1.4.1.30065.4.1.1.2.1.13',
+	'aristaBgp4V2PeerDescription'	   => '1.3.6.1.4.1.30065.4.1.1.2.1.14',
+	'aristaBgp4V2PeerLastErrorCodeReceived'    => '1.3.6.1.4.1.30065.4.1.1.3.1.1',
+	'aristaBgp4V2PeerLastErrorSubCodeReceived' => '1.3.6.1.4.1.30065.4.1.1.3.1.2',
+	'aristaBgp4V2PeerLastErrorReceivedText'    => '1.3.6.1.4.1.30065.4.1.1.3.1.4',
+	#
+	'aristaBgp4V2PrefixInPrefixes'	=> '1.3.6.1.4.1.30065.4.1.1.8.1.3',
+
 
 	# -----------------------------------------------------------------------------
 	# CISCO
@@ -294,6 +323,30 @@ my %bgpOIDtable	= (
 	'f10BgpM2PeerIndex'		=> '1.3.6.1.4.1.6027.20.1.2.1.1.1.15',
 	#
 	'f10BgpM2PrefixCountersSafi'	=> '1.3.6.1.4.1.6027.20.1.2.6.2.1.2',
+
+
+	# -----------------------------------------------------------------------------
+	# BROCADE
+	# NOTE: Based on BGP4V2-MIB
+	#  URL: http://www.brocade.com/content/html/en/mib-reference-guide/
+	#	ipmib-feb2016-reference/GUID-C9294495-3C42-4267-A36A-561D7A536B6B.html
+	'brocade'			=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.13',
+	#
+	'bgp4V2PeerEntry'		=> '1.3.6.1.4.1.1991.3.5.1.1.2.1',
+	'bgp4V2PeerLocalAddrType'	=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.2', # not accessible
+	'bgp4V2PeerLocalAddr'		=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.3', # not accessible
+	'bgp4V2PeerRemoteAddrType'	=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.4', # not accessible
+	'bgp4V2PeerRemoteAddr'		=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.5', # not accessible
+	'bgp4V2PeerLocalAs'		=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.7',
+	'bgp4V2PeerRemoteAs'		=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.10',
+	'bgp4V2PeerAdminStatus'		=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.12',
+	'bgp4V2PeerState'		=> '1.3.6.1.4.1.1991.3.5.1.1.2.1.13',
+	'bgp4V2PeerLastErrorCodeReceived'    => '1.3.6.1.4.1.1991.3.5.1.1.3.1.1',
+	'bgp4V2PeerLastErrorSubCodeReceived' => '1.3.6.1.4.1.1991.3.5.1.1.3.1.2',
+	#
+	'snBgp4NeighborSummaryIp'	     => '1.3.6.1.4.1.1991.1.2.11.17.1.1.2',
+	'snBgp4NeighborSummaryRouteReceived' => '1.3.6.1.4.1.1991.1.2.11.17.1.1.5',
+
 
 	# -----------------------------------------------------------------------------
 	# JUNIPER
@@ -524,6 +577,32 @@ if( defined($np->opts->{'type'}) )
    	    }
 	}
 
+	#  --> Brocade
+	if( not defined($s_vendor) )
+	{
+	    $result	= $session->get_table( -baseoid => $bgpOIDtable{'brocade'} );
+
+	    if( defined($result) )
+	    {
+		$s_vendor	= "brocade";
+		print " BGP: Vendor detected -> $s_vendor\n" if( $np->opts->{'verbose'} );
+		_bgp_brocade($np->opts->{'bgp'});
+   	    }
+	}
+
+	#  --> Arista
+	if( not defined($s_vendor) )
+	{
+	    $result	= $session->get_table( -baseoid => $bgpOIDtable{'arista'} );
+
+	    if( defined($result) )
+	    {
+		$s_vendor	= "arista";
+		print " BGP: Vendor detected -> $s_vendor\n" if( $np->opts->{'verbose'} );
+		_bgp_arista($np->opts->{'bgp'});
+   	    }
+	}
+
 	# --> Generic BGP4-MIB
 	if( not defined($s_vendor) )
 	{
@@ -542,6 +621,18 @@ if( defined($np->opts->{'type'}) )
 if( not defined( $s_vendor ) )
 {
 	$np->plugin_exit( CRITICAL, "Unable to determine vendor, can't continue.");
+}
+
+
+
+# ------------------------------------------------------------------------------
+#
+sub _raw_debug
+{
+	my $data = shift;
+	use Data::Dumper;
+	$Data::Dumper::Indent = 3;
+	print Dumper($data);
 }
 
 
@@ -637,6 +728,376 @@ sub _bgp_generic
 		$bgpPeer{'type'} = "eBGP";
 	}
 }
+
+# ------------------------------------------------------------------------------
+sub _bgp_arista
+{
+	if( $np->opts->{'debug'} )
+	{
+		print " SUB: Function _bgp_arista processing ...\n";
+	}
+	#
+	# NOTE: This function takes into account Arista Routers (ARISTA-BGP4V2-MIB)
+
+	my $peerIP	= shift || $np->opts->{'bgp'};
+	my $peerAFinet	= _ip_version($peerIP) ||
+			  $np->plugin_exit( CRITICAL, "Not a valid IP address" );
+
+	# PROG: First we need to pull the table to start indexing entries
+	my $result	= $session->get_table( -baseoid => $bgpOIDtable{'aristaBgp4V2PeerState'} );
+	if( not defined($result) )
+	{
+		$session->close;
+		np->plugin_exit( UNKNOWN, "Router doesn't support ARISTA-BGP4V2-MIB::aristaBgp4V2PeerState" );
+	}
+
+	# -- Find specific peer information
+	my $peerMatch = 0;
+	my $peerAFinetOID; # set below
+	PEEROID: foreach my $l_snmpOID ( oid_lex_sort( keys( %{$result}) ) )
+	{
+		next if( $l_snmpOID !~ /$bgpOID$/ ); # Find specific peer or skip entry.
+		$peerMatch = 1;
+
+		my $baseLength	= length( $bgpOIDtable{'aristaBgp4V2PeerState'} ) + 1;
+		my $l_vars	= substr( $l_snmpOID, $baseLength );
+
+		my $l_instance	= substr( $l_vars, 0, 1);
+		my $l_afinet	= substr( $l_vars, 2, 1);
+
+		$bgpPeer{'instance'}	= $l_instance;  # Routing Instance
+		$bgpPeer{'afinet'}	= $l_afinet;	# 1: ipv4, 2: ipv6 (as per INET-ADDRESS-MIB)
+		$bgpPeer{'remoteAddrOID'} = _convert_IP_to_OID($np->opts->{'bgp'});
+
+		if( $l_afinet == 1 )
+		{
+		    # -- IPv4 found
+		    $peerAFinetOID = "1.4"; # ipv4, 4 entries following
+		    $bgpPeer{'afinetOID'} = "1.4";
+
+		    if( $l_vars =~ /^$l_instance.$peerAFinetOID/ )
+		    {
+			my @l_localaddrArr	= split( /\./, $l_vars, -1 );
+			# LOOP: count is 3rd position to the 6th (4 octets)
+			foreach ( 3 .. 6 )
+			{
+			    if( $_ == 6 )
+			    {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_];
+			    } else {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_] . ".";
+			    }
+			} #end:foreach
+		    }
+		}
+		elsif ( $l_afinet == 2 )
+		{
+		    # == IPv6 found
+		    $peerAFinetOID = "2.16"; # ipv6, 16 entries following
+		    $bgpPeer{'afinetOID'} = "2.16";
+
+		    if( $l_vars =~ /^$l_instance.$peerAFinetOID/ )
+		    {
+			my @l_localaddrArr	= split( /\./, $l_vars, -1 );
+			$bgpPeer{'localAddr'}	= $np->opts->{'bgp'};  # -nistor: FIXME
+
+			# LOOP: count is 2nd position to the 17th
+			foreach ( 3 .. 18 )
+			{
+			    if( $_ == 18 )
+			    {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_];
+			    } else {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_] . ".";
+			    }
+			} # end:foreach
+		    } # end: if l_vars
+		} else {
+			$np->plugin_exit( CRITICAL, "AFInet is not ipv4 or ipv6" );
+		} # end: afinet
+	}
+
+	# SNMP: Prep variables to be polled.
+	my $s_subOID	= $bgpPeer{'instance'} . "." . $bgpPeer{'afinetOID'} . "." .
+			  $bgpPeer{'remoteAddrOID'};
+
+	my $p_bgpASN	= $bgpOIDtable{'bgpLocalAs'};
+        my $p_State	= $bgpOIDtable{'aristaBgp4V2PeerState'}       . "." . $s_subOID;
+	my $p_Status	= $bgpOIDtable{'aristaBgp4V2PeerAdminStatus'} . "." . $s_subOID;
+	my $p_LocalAS	= $bgpOIDtable{'aristaBgp4V2PeerLocalAs'}     . "." . $s_subOID;
+	my $p_RemoteAS	= $bgpOIDtable{'aristaBgp4V2PeerRemoteAs'}    . "." . $s_subOID;
+	my $p_errCode	 = $bgpOIDtable{'aristaBgp4V2PeerLastErrorCodeReceived'}
+			   . "." . $s_subOID;
+	my $p_errSubCode = $bgpOIDtable{'aristaBgp4V2PeerLastErrorSubCodeReceived'}
+			   . "." . $s_subOID;
+
+	my $p_Prefixes;	# Compute after we get the table entry for SAFI.
+	my $p_SAFI;	# Compute after we get the table entry for SAFI.
+
+	# SNMP: Cross reference prefixes table for peer type.
+	my $p_PfxTbl	= $bgpOIDtable{'aristaBgp4V2PrefixInPrefixes'} . "." . $s_subOID;
+	my $result_pfx	= $session->get_table( -baseoid => $p_PfxTbl );
+	if( keys( %{$result_pfx} ) == 1 ) # Count entries.
+	{
+		#  OID: Parse and set in hash.
+		my $l_key	= each %{$result_pfx};
+		my $l_afinet	= (split(/\./, substr( $l_key, -3 )))[0];
+		my $l_safi	= substr( $l_key, -1 );
+
+		$p_Prefixes	= $l_key;
+		$bgpPeer{'safi'} = $l_safi;
+
+		if( $np->opts->{'verbose'} )
+		{
+			print " BGP: session is " . $bgpAfi{$l_afinet} . "-" . $bgpSafi{$l_safi} . "\n";
+		}
+	} else {
+		$np->plugin_exit( WARNING, "Multiple Prefix SAFI detected, bailing." );
+	}
+
+	my @snmpoids;
+	push( @snmpoids, $p_State, $p_Status, $p_LocalAS, $p_RemoteAS);
+	push( @snmpoids, $p_errCode, $p_errSubCode, $p_Prefixes );
+
+	if( $np->opts->{'verbose'} )
+	{
+		print "POLL: Attempting to poll state, admStatus, ASN, error Codes, etc..\n";
+	}
+	if( $np->opts->{'debug'} )
+	{
+		print "POLL: \@snmpoids -> " . join("\n  ", @snmpoids) . "\n";
+	}
+
+	my $s_result = $session->get_request( -varbindlist => \@snmpoids );
+
+	if( not defined( $s_result ) )
+	{
+		$session->close;
+		$np->plugin_exit( UNKNOWN, "BGP neighbor not configured ?" );
+	} else {
+		$session->close;
+	}
+
+	if( $s_result->{$p_State} eq "noSuchInstance" || not defined($s_result->{$p_State}) )
+	{
+		$np->plugin_exit( UNKNOWN, "BGP error: Does peer exist on this router?" );
+	}
+
+	$bgpPeer{'state'}	= $s_result->{$p_State};
+	$bgpPeer{'stateName'}	= $bgpState{$s_result->{$p_State}};
+	$bgpPeer{'admStatus'}	= $s_result->{$p_Status};
+	$bgpPeer{'localAS'}	= $s_result->{$p_LocalAS} ?
+				  $s_result->{$p_LocalAS} : $s_result->{$p_bgpASN};
+	$bgpPeer{'remoteAS'}	= $s_result->{$p_RemoteAS};
+	$bgpPeer{'errCode'}	= $s_result->{$p_errCode};
+	$bgpPeer{'errSubCode'}	= $s_result->{$p_errSubCode};
+	$bgpPeer{'prefixes'}	= $s_result->{$p_Prefixes};
+
+	my $t_err		= sprintf("%02X %02X", $bgpPeer{'errCode'}, $bgpPeer{'errSubCode'}) ;
+	$bgpPeer{'errText'}	= $bgpSubcodes{$t_err};
+
+	if( $bgpPeer{'localAS'} == $bgpPeer{'remoteAS'} )
+	{
+		$bgpPeer{'type'} = "iBGP";
+	} else {
+		$bgpPeer{'type'} = "eBGP";
+	}
+}
+
+
+# ------------------------------------------------------------------------------
+sub _bgp_brocade
+{
+	if( $np->opts->{'debug'} )
+	{
+		print " SUB: Function _bgp_brocade processing ...\n";
+	}
+	#
+	# NOTE: This function takes into account Brocade/Foundry routers using BGP4V2-MIB
+
+	my $peerIP	= shift || $np->opts->{'bgp'};
+	my $peerAFinet	= _ip_version($peerIP) ||
+			  $np->plugin_exit( CRITICAL, "Not a valid IP address" );
+
+	# PROG: If we are trying to warn on bgplow or high and IPv6, bail, not supported.
+	if( ( defined($np->opts->{'bgplow'}) || defined($np->opts->{'bgphigh'}) ) &&
+	    ( $peerAFinet == 6 ) )
+	{
+		$np->plugin_exit( UNKNOWN, "Device doesn't support v6 prefix count" );
+	} else {
+
+		# SNMP: Cross reference old NeighbourSummary table to get Index.
+		my $p_idxTbl	= $bgpOIDtable{'snBgp4NeighborSummaryIp'};
+		my $result_idx	= $session->get_table( -baseoid => $p_idxTbl );
+
+		INDEXOID: foreach my $l_idxOID ( oid_lex_sort( keys( %{$result_idx} ) ) )
+		{
+			next if( $result_idx->{$l_idxOID} ne $peerIP );
+
+			my $baseLength	= length( $bgpOIDtable{'snBgp4NeighborSummaryIp'} ) + 1;
+			my $l_idx	= substr( $l_idxOID, $baseLength );
+			$bgpPeer{'idxPrefix'} = $l_idx;
+
+			if( $np->opts->{'debug'} )
+			{
+				print " BGP: Found prefix table index " . $bgpPeer{'idxPrefix'} .
+				      " for peer $peerIP\n";
+			}
+		}
+	}
+
+	# PROG: First we need to pull the table to start indexing entries
+	my $result	= $session->get_table( -baseoid => $bgpOIDtable{'bgp4V2PeerState'} );
+	if( not defined($result) )
+	{
+		$session->close;
+		np->plugin_exit( UNKNOWN, "Router doesn't support BGP4V2-MIB::bgp4V2PeerState" );
+	}
+
+	# -- Find specific peer information
+	my $peerMatch = 0;
+	PEEROID: foreach my $l_snmpOID ( oid_lex_sort( keys( %{$result}) ) )
+	{
+		next if( $l_snmpOID !~ /$bgpOID$/ ); # Find specific peer or skip entry.
+		$peerMatch = 1;
+
+		my $baseLength	= length( $bgpOIDtable{'bgp4V2PeerState'} ) + 1;
+		my $l_vars	= substr( $l_snmpOID, $baseLength );
+
+		my $l_instance	= substr( $l_vars, 0, 1);
+		my $l_afinet	= substr( $l_vars, 2, 1);
+		my $peerAFinetOID; # set below
+
+		$bgpPeer{'instance'}	= $l_instance;  # Routing Instance
+		$bgpPeer{'afinet'}	= $l_afinet;	# 1: ipv4, 2: ipv6 (as per INET-ADDRESS-MIB)
+		$bgpPeer{'remoteAddrOID'} = _convert_IP_to_OID($np->opts->{'bgp'});
+
+		if( $l_afinet == 1 )
+		{
+		    # -- IPv4 found
+		    $peerAFinetOID = "1.4"; # ipv4, 4 entries following
+		    $bgpPeer{'afinetOID'} = "1.4";
+
+		    if( $l_vars =~ /^$l_instance.$peerAFinetOID/ )
+		    {
+			my @l_localaddrArr	= split( /\./, $l_vars, -1 );
+			# LOOP: count is 3rd position to the 6th (4 octets)
+			foreach ( 3 .. 6 )
+			{
+			    if( $_ == 6 )
+			    {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_];
+			    } else {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_] . ".";
+			    }
+			} #end:foreach
+		    }
+		}
+		elsif ( $l_afinet == 2 )
+		{
+		    # == IPv6 found
+		    $peerAFinetOID = "2.16"; # ipv6, 16 entries following
+		    $bgpPeer{'afinetOID'} = "2.16";
+
+		    if( $l_vars =~ /^$l_instance.$peerAFinetOID/ )
+		    {
+			my @l_localaddrArr	= split( /\./, $l_vars, -1 );
+			$bgpPeer{'localAddr'}	= $np->opts->{'bgp'};  # -nistor: FIXME
+
+			# LOOP: count is 2nd position to the 17th
+			foreach ( 3 .. 18 )
+			{
+			    if( $_ == 18 )
+			    {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_];
+			    } else {
+				$bgpPeer{'localAddrOID'} .= $l_localaddrArr[$_] . ".";
+			    }
+			} # end:foreach
+		    } # end: if l_vars
+		} else {
+			$np->plugin_exit( CRITICAL, "AFInet is not ipv4 or ipv6" );
+		}
+	}
+
+	# SNMP: Create the latter half of the OID.
+	my $s_subOID	= $bgpPeer{'instance'} . "." . $bgpPeer{'afinetOID'} . "." .
+			  $bgpPeer{'localAddrOID'} . "." . $bgpPeer{'afinetOID'} . "." .
+			  $bgpPeer{'remoteAddrOID'};
+
+	# SNMP: Prep variables to be polled.
+	my $p_bgpASN	= $bgpOIDtable{'bgpLocalAs'};
+        my $p_State	= $bgpOIDtable{'bgp4V2PeerState'}        . "." . $s_subOID;
+	my $p_Status	= $bgpOIDtable{'bgp4V2PeerAdminStatus'}  . "." . $s_subOID;
+	my $p_LocalAS	= $bgpOIDtable{'bgp4V2PeerLocalAs'}      . "." . $s_subOID;
+	my $p_RemoteAS	= $bgpOIDtable{'bgp4V2PeerRemoteAs'}     . "." . $s_subOID;
+	my $p_errCode	 = $bgpOIDtable{'bgp4V2PeerLastErrorCodeReceived'}     . "." . $s_subOID;
+	my $p_errSubCode = $bgpOIDtable{'bgp4V2PeerLastErrorSubCodeReceived'}  . "." . $s_subOID;
+	#
+
+	my @snmpoids;
+	push( @snmpoids, $p_bgpASN, $p_State, $p_Status, $p_LocalAS, $p_RemoteAS);
+	push( @snmpoids, $p_errCode, $p_errSubCode );
+
+
+	my $p_Prefixes;	
+	if( $peerAFinet == 4 )
+	{
+	    $p_Prefixes	= $bgpOIDtable{'snBgp4NeighborSummaryRouteReceived'} . "." . $bgpPeer{'idxPrefix'};
+	    push( @snmpoids, $p_Prefixes );
+	}
+
+	if( $np->opts->{'verbose'} )
+	{
+		print "POLL: Attempting to poll state, admStatus, ASN, error Codes, etc..\n";
+	}
+	if( $np->opts->{'debug'} )
+	{
+		print "POLL: \@snmpoids -> " . join("\n  ", @snmpoids) . "\n";
+	}
+
+	my $s_result = $session->get_request( -varbindlist => \@snmpoids );
+
+	if( not defined( $s_result ) )
+	{
+		$session->close;
+		$np->plugin_exit( UNKNOWN, "BGP neighbor not configured ?" );
+	} else {
+		$session->close;
+	}
+
+	if( $s_result->{$p_State} eq "noSuchInstance" || not defined($s_result->{$p_State}) )
+	{
+		$np->plugin_exit( UNKNOWN, "BGP error: Does peer exist on this router?" );
+	}
+
+	$bgpPeer{'state'}	= $s_result->{$p_State};
+	$bgpPeer{'stateName'}	= $bgpState{$s_result->{$p_State}};
+	$bgpPeer{'admStatus'}	= $s_result->{$p_Status};
+	$bgpPeer{'localAS'}	= $s_result->{$p_LocalAS} ?
+				  $s_result->{$p_LocalAS} : $s_result->{$p_bgpASN};
+	$bgpPeer{'remoteAS'}	= $s_result->{$p_RemoteAS};
+	$bgpPeer{'errCode'}	= $s_result->{$p_errCode};
+	$bgpPeer{'errSubCode'}	= $s_result->{$p_errSubCode};
+
+	my $t_err		= sprintf("%02X %02X", $bgpPeer{'errCode'}, $bgpPeer{'errSubCode'}) ;
+	$bgpPeer{'errText'}	= $bgpSubcodes{$t_err};
+
+	if( $peerAFinet == 4 )
+	{
+		$bgpPeer{'prefixes'} = $s_result->{$p_Prefixes};
+	}
+
+	# $bgpPeer{'prefixes'}	= $s_result->{$p_Prefixes};
+
+	if( $bgpPeer{'localAS'} == $bgpPeer{'remoteAS'} )
+	{
+		$bgpPeer{'type'} = "iBGP";
+	} else {
+		$bgpPeer{'type'} = "eBGP";
+	}
+}
+
 
 # ------------------------------------------------------------------------------
 sub _bgp_cisco
