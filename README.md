@@ -123,13 +123,13 @@ bgp_snmpcom variable will take alphanumeric entries enclosed by quotes.  If the 
 
 Available algorithms for authPass are HMAC-MD5-96 (MD5) and HMAC-SHA-96 (SHA1).  The privacy option supports CBC-DES (DES), CBC-3DES-EDE (3DES), or CFB128-AES-128 (AES).  [VAR: mandatory]
 ```
- vars.bgp_snmpcom = "<value>" 
- vars.bgp_snmpcom = "<user>:<authPass>:<authProto>:<privPass>:<privProto>"
+ vars.bgp_snmpcom = "value" 
+ vars.bgp_snmpcom = "user:authPass:authProto:privPass:privProto"
 ```
 
 bgp_peerip variable supports both IPv4 and IPv6 address notation.  An error is returned if the address is invalid. [VAR: mandatory]
 ```
- vars.bgp_peerip = "<value>"
+ vars.bgp_peerip = "value"
 ```
 
 bgp_pfxlow is a boolean based variable which, if set, will compare the result of a prefix count of accepted routes from the BGP neighbour and alert if warn/crit are also set. [VAR: optional]
@@ -144,7 +144,7 @@ bgp_pfxhigh is a boolean based variable.  Like it's counterpart bgp_pfxlow, if s
 
 bgp_type can be defined if the user would like to speed up the time it takes to poll a device.  By specifying a specific vendor the auto-discovery process does not run every single time.  Current values are based on vendors names, including generic. [VAR: optional]
 ```
- vars.bgp_type = "<value>"
+ vars.bgp_type = "value"
 ```
 
 bgp_verbose can be set to receive a little more information when polling a device in an attempt to troubleshoot an issue. [VAR: optional]
