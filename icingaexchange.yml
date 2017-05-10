@@ -13,6 +13,6 @@ releases:
     files: 
       - 
         name: check_bgp.pl
-        url: "https://github.com/nistorj/monitoring-plugins/blob/master/check_bgp.pl"
+        url: "file:///check_bgp.pl"
         description: "Plugin to monitor BGP neighbour status and/or prefix count"
         checksum: f5fea7a80f2af12f9bdab22889d60f65
