@@ -2,36 +2,42 @@
 
 Summary
 -------
-
 These monitoring plugins was designed to work with compatible NMS systems and utlize the Monitoring::Plugin modules in Perl.  Some examples are Icinga, Naemon, Nagios, and Shinken to name a few.  Each plugin has it's own documentation section below.
 
 
 General Requirements
---------------------
+------------------
 These monitoring tools are based on perl.  Some monitoring systems support embedded perl interpreter and some execute the perl each run.  Information about the perl modules required are listed per script.
 
+
+Monitoring Scripts
+------------------
+
+#### Index
+1. [Check BGP](##check-bgp)
 
 
 ## check_bgp: BGP
 
-#### Perl Modules
- Monitoring::Plugin, Net::IP, Net::SNMP, Socket
+##### Perl Modules
+
+  Monitoring::Plugin, Net::IP, Net::SNMP, Socket
 
 
-#### Vendor Support
-The following has been verified to be working based on recent equipment and recent code.
-* Arista
-* Brocade
-* Cisco
-* Juniper
-* Generic BGP4-MIB (RFC4273) support
+##### Vendor Support
 
-#### Installation
+ The following has been verified to be working based on recent equipment and recent code.
+ - Arista
+ - Brocade
+ - Cisco
+ - Juniper
+ - Generic BGP4-MIB (RFC4273) support
 
-=== Work in progress ===
+##### Installation
 
-#### Configuration
+ === Work in progress ===
 
+##### Configuration
 There are a few variables which can be used tweaked for the different environments.
 
 The peerip variable supports both IPv4 and IPv6 address notation.  An error is returned if the address is invalid.
@@ -40,10 +46,10 @@ The peerip variable supports both IPv4 and IPv6 address notation.  An error is r
 ```
 
 
-#### Configuration Examples
+##### Configuration Examples
 
 
-Example 1: IPv4 peer, auto-detect router type.
+###### Example 1: IPv4 peer, auto-detect router type.
 ```
 object Service "BGP-Uplink" {
 	import           = "template-default-import"
@@ -56,14 +62,14 @@ object Service "BGP-Uplink" {
 }
 ```
 
-Example 2: IPv6 peer, auto-detect router type and warn if prefix count is below 25000, crit if below 22000
+###### Example 2: IPv4 peer, auto-detect router type and warn if prefix count is below 25000, crit if below 22000
 ```
 object Service "BGP-Peer-A" {
 	import           = "template-default-import"
 	host_name        = "router2.example.ca"
 	check_command    = "bgp"
 
-	vars.bgp_peerip  = "fd9d:4c91:360a::21"
+	vars.bgp_peerip  = "10.33.44.55"
 	vars.bgp_snmpcom = "c0mmun1ty"
 	vars.bgp_snmpver = 2
 
@@ -73,14 +79,14 @@ object Service "BGP-Peer-A" {
 }
 ```
 
-Example 3: IPv4 peer, specify router type and warn if prefix count is above 130
+###### Example 3: IPv6 peer, specific router type and warn if prefix count is above 130
 ```
 object Service "BGP-Customer-B" {
 	import           = "template-default-import"
 	host_name        = "router3.example.ca"
 	check_command    = "bgp"
 
-	vars.bgp_peerip  = "fd09:b422:3185::ABBD"
+	vars.bgp_peerip  = "fd09:b422:3185::abbd"
 	vars.bgp_snmpcom = "c0mmun1ty"
 	vars.bgp_snmpver = 2
 
@@ -90,4 +96,19 @@ object Service "BGP-Customer-B" {
 }
 ```
 
+###### Example 4: IPv6 peer, specific router type, crit if prefix count above 512000 and use SNMPv3.
+```
+object Service "BGP-Customer-B" {
+	import           = "template-default-import"
+	host_name        = "router4.example.ca"
+	check_command    = "bgp"
 
+	vars.bgp_peerip  = "fd34:a422:443a::aedd"
+	vars.bgp_snmpcom = "user:authPassw0rd:authProtocol:privPass:privProtocol"
+	vars.bgp_snmpver = 3
+
+	vars.bgp_type    = "juniper"
+	vars.bgp_pfxhigh = true
+	vars.bgp_warn    = 512000
+}
+```
