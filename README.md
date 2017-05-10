@@ -17,7 +17,7 @@ Monitoring Scripts
 1. [Check BGP](#check-bgp)
 
 
-## check_bgp: BGP
+## Check BGP
 
 ##### Perl Modules
 
@@ -35,7 +35,79 @@ Monitoring Scripts
 
 ##### Installation
 
- === Work in progress ===
+The following configuration can be placed in /etc/icinga2/include/plugins-contrib.d on CentOS 7 systems.
+```
+FILE: /etc/icinga2/include/plugins-contrib.d/bgp.conf
+
+/******************************************************************************
+ * Icinga 2                                                                   *
+ *
+ */
+
+object CheckCommand "bgp" {
+        command = [ PluginDir + "/check_bgp.pl" ]
+
+        arguments = {
+                "-H" = {
+                        value = "$address$"
+                        required = true
+                        description = "hostname or ip address of router"
+                }
+                "-r" = {
+                        value = "$bgp_state$"
+                        required = false
+                        description = "BGP State result code to match"
+                }
+                "-d" = {
+                        value = "$bgp_debug$"
+                        required = false
+                }
+                "-s" = {
+                        value = "$bgp_snmpcom$"
+                        required = true
+                }
+                "-P" = {
+                        value = "$bgp_snmpver$"
+                        required = true
+                }
+                "-b" = {
+                        value = "$bgp_peerip$"
+                        required = true
+                }
+                "-t" = {
+                        value = "$bgp_type$"
+                        required = false
+                }
+                "-A" = {
+                        value = "$bgp_pfxhigh$"
+                        required = false
+                }
+                "-B" = {
+                        value = "$bgp_pfxlow$"
+                        required = false
+                }
+        }
+
+        # Variables available for configuration, and their default
+
+        vars.bgp_router         = "$address$"
+
+        vars.bgp_snmpcom        = "$bgp_snmpcom$"
+        vars.bgp_snmpver        = "$bgp_snmpver$"
+        vars.bgp_crit           = ",,1"
+        vars.bgp_warn           = ",,2"
+
+        # VARS: Entries which don't have a default
+        #       These are configured in the ${host}.conf file as variables.
+
+        # vars.bgp_debug        = true/false
+        # vars.bgp_pfxhigh      = true/false # use warn/crit for levels
+        # vars.bgp_pfxlow       = true/false # use warn/crit for levels
+        # vars.bgp_peerip       = "IP.addr.v4|ip:addr:V6"
+        # vars.bgp_state        = 6
+        # vars.bgp_type         = specific vendor, cisco, juniper, etc...
+}
+```
 
 ##### Configuration
 There are a few variables which can be used tweaked for the different environments.  Some variables are mandatory and others are optional, they are listed.
