@@ -14,7 +14,7 @@ Monitoring Scripts
 ------------------
 
 #### Index
-1. [Check BGP](##check-bgp)
+1. [Check BGP](#check-bgp)
 
 
 ## check_bgp: BGP
@@ -31,18 +31,59 @@ Monitoring Scripts
  - Brocade
  - Cisco
  - Juniper
- - Generic BGP4-MIB (RFC4273) support
+ - Generic [BGP4-MIB RFC4273]
 
 ##### Installation
 
  === Work in progress ===
 
 ##### Configuration
-There are a few variables which can be used tweaked for the different environments.
+There are a few variables which can be used tweaked for the different environments.  Some variables are mandatory and others are optional, they are listed.
 
-The peerip variable supports both IPv4 and IPv6 address notation.  An error is returned if the address is invalid.
+
+
+bgp_snmpver variable will accept both version 2 and 3 options and requires the bgp_snmpcom variable to be set as well. [VAR: mandatory]
+```
+ vars.bgp_snmpver = 2|3
+```
+
+bgp_snmpcom variable will take alphanumeric entries enclosed by quotes.  If the SNMP version if 2 then the entry is simply the community string of the device.  Version 3 requires a more elaborate configuration.  The appropriate 'security level' (ie. noAuthNoPriv, authNoPriv, authPriv) is picked dynamically based on the options passed.
+
+Available algorithms for authPass are HMAC-MD5-96 (MD5) and HMAC-SHA-96 (SHA1).  The privacy option supports CBC-DES (DES), CBC-3DES-EDE (3DES), or CFB128-AES-128 (AES).  [VAR: mandatory]
+```
+ vars.bgp_snmpcom = "<value>" 
+ vars.bgp_snmpcom = "<user>:<authPass>:<authProto>:<privPass>:<privProto>"
+```
+
+bgp_peerip variable supports both IPv4 and IPv6 address notation.  An error is returned if the address is invalid. [VAR: mandatory]
 ```
  vars.bgp_peerip = "<value>"
+```
+
+bgp_pfxlow is a boolean based variable which, if set, will compare the result of a prefix count of accepted routes from the BGP neighbour and alert if warn/crit are also set. [VAR: optional]
+```
+ vars.bgp_pfxlow = true|false
+```
+
+bgp_pfxhigh is a boolean based variable.  Like it's counterpart bgp_pfxlow, if set, will alert if the thresholds are met according to warn/crit. [VAR: optional]
+```
+ vars.bgp_pfxhigh = true|false
+```
+
+bgp_type can be defined if the user would like to speed up the time it takes to poll a device.  By specifying a specific vendor the auto-discovery process does not run every single time.  Current values are based on vendors names, including generic. [VAR: optional]
+```
+ vars.bgp_type = "<value>"
+```
+
+bgp_verbose can be set to receive a little more information when polling a device in an attempt to troubleshoot an issue. [VAR: optional]
+
+```
+ vars.bgp_verbose = true|false
+```
+
+bgp_debug can be enabled if verbose was not providing enough information or you would like to see and track down some other issue. [VAR: optional]
+```
+ vars.bgp_debug = true|false
 ```
 
 
@@ -104,11 +145,13 @@ object Service "BGP-Customer-B" {
 	check_command    = "bgp"
 
 	vars.bgp_peerip  = "fd34:a422:443a::aedd"
-	vars.bgp_snmpcom = "user:authPassw0rd:authProtocol:privPass:privProtocol"
+	vars.bgp_snmpcom = "BobTheBuilder:DaP4ssw0rd:MD5:PrivP4ss:AES"
 	vars.bgp_snmpver = 3
 
 	vars.bgp_type    = "juniper"
 	vars.bgp_pfxhigh = true
-	vars.bgp_warn    = 512000
+	vars.bgp_crit    = 512000
 }
 ```
+
+
