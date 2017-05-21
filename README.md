@@ -303,9 +303,11 @@ object CheckCommand "eigrp" {
         # vars.eigrp_debug        = true/false
         # vars.eigrp_nbrhigh      = true/false # use warn/crit for levels
         # vars.eigrp_nbrlow       = true/false # use warn/crit for levels
+```
 
 ##### Configuration
 There are a few variables which can be used tweaked for the different environments.  Some variables are mandatory and others are optional, they are listed.
+
 
 
 eigrp_snmpver variable will accept both version 2 and 3 options and requires the eigrp_snmpcom variable to be set as well. [VAR: mandatory]
