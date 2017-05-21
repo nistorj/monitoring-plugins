@@ -15,6 +15,7 @@ Monitoring Scripts
 
 #### Index
 1. [Check BGP](#check-bgp)
+2. [Check EIGRP](#check-eigrp)
 
 
 ## Check BGP
@@ -132,7 +133,7 @@ bgp_peerip variable supports both IPv4 and IPv6 address notation.  An error is r
  vars.bgp_peerip = "value"
 ```
 
-bgp_pfxlow is a boolean based variable which, if set, will compare the result of a prefix count of accepted routes from the BGP neighbour and alert if warn/crit are also set. [VAR: optional]
+bgp_pfxlow is a boolean based variable which, if set, will compare the result of a prefix count of accepted routes from the BGP neighbor and alert if warn/crit are also set. [VAR: optional]
 ```
  vars.bgp_pfxlow = true|false
 ```
@@ -226,4 +227,107 @@ object Service "BGP-Customer-B" {
 }
 ```
 
+
+
+## Check EIGRP
+
+##### Perl Modules
+
+  Monitoring::Plugin, Net::IP, Net::SNMP, Socket
+
+
+##### Vendor Support
+
+ The following has been verified to be working with Cisco devices.
+
+
+##### Installation
+
+The following configuration can be placed in /etc/icinga2/include/plugins-contrib.d on CentOS 7 systems.
+```
+FILE: /etc/icinga2/include/plugins-contrib.d/eigrp.conf
+
+/******************************************************************************
+ * Icinga 2                                                                   *
+ *
+ */
+
+object CheckCommand "eigrp" {
+        command = [ PluginDir + "/check_eigrp.pl" ]
+
+        arguments = {
+                "-H" = {
+                        value = "$address$"
+                        required = true
+                        description = "hostname or ip address of router"
+                }
+                "-r" = {
+                        value = "$eigrpres$"
+                        required = false
+                        description = "Specific number of matches"
+                }
+                "-d" = {
+                        value = "$eigrp_debug$"
+                        required = false
+                }
+                "-s" = {
+                        value = "$eigrp_snmpcom$"
+                        required = true
+                }
+                "-P" = {
+                        value = "$eigrp_snmpver$"
+                        required = true
+                }
+                "-A" = {
+                        value = "$eigrp_nbrhigh$"
+                        required = false
+                }
+                "-B" = {
+                        value = "$eigrp_nbrlow$"
+                        required = false
+                }
+        }
+
+        # Variables available for configuration, and their default
+
+        vars.eigrp_router       = "$address$"
+
+        vars.eigrp_snmpcom        = "$eigrp_snmpcom$"
+        vars.eigrp_snmpver        = "$eigrp_snmpver$"
+        vars.eigrp_crit           = ",,1"
+        vars.eigrp_warn           = ",,2"
+
+        # VARS: Entries which don't have a default
+        #       These are configured in the ${host}.conf file as variables.
+
+        # vars.eigrp_debug        = true/false
+        # vars.eigrp_nbrhigh      = true/false # use warn/crit for levels
+        # vars.eigrp_nbrlow       = true/false # use warn/crit for levels
+
+##### Configuration
+There are a few variables which can be used tweaked for the different environments.  Some variables are mandatory and others are optional, they are listed.
+
+
+eigrp_snmpver variable will accept both version 2 and 3 options and requires the eigrp_snmpcom variable to be set as well. [VAR: mandatory]
+```
+ vars.eigrp_snmpver = 2|3
+```
+
+eigrp_snmpcom variable will take alphanumeric entries enclosed by quotes.  If the SNMP version if 2 then the entry is simply the community string of the device.  Version 3 requires a more elaborate configuration.  The appropriate 'security level' (ie. noAuthNoPriv, authNoPriv, authPriv) is picked dynamically based on the options passed.
+
+Available algorithms for authPass are HMAC-MD5-96 (MD5) and HMAC-SHA-96 (SHA1).  The privacy option supports CBC-DES (DES), CBC-3DES-EDE (3DES), or CFB128-AES-128 (AES).  [VAR: mandatory]
+```
+ vars.eigrp_snmpcom = "value" 
+ vars.eigrp_snmpcom = "user:authPass:authProto:privPass:privProto"
+```
+
+eigrp_nbrlow is a boolean based variable which, if set, will compare the result of total neighbor count of EIGRP neighbors and alert if warn/crit are also set. [VAR: optional]
+```
+ vars.eigrp_nbrlow = true|false
+```
+
+eigrp_nbrhigh is a boolean based variable.  Like it's counterpart eigrp_nbrlow, if set, will alert if the thresholds are met according to warn/crit. [VAR: optional]
+```
+ vars.eigrp_nbrhigh = true|false
+```
 
