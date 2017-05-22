@@ -304,6 +304,7 @@ object CheckCommand "eigrp" {
         # vars.eigrp_debug        = true/false
         # vars.eigrp_nbrhigh      = true/false # use warn/crit for levels
         # vars.eigrp_nbrlow       = true/false # use warn/crit for levels
+}
 ```
 
 ##### Configuration
@@ -408,6 +409,7 @@ object CheckCommand "cisco_wlan" {
         # vars.wlan_debug        = true/false
         # vars.wlan_clienthigh   = true/false # use warn/crit for levels
         # vars.wlan_clientlow    = true/false # use warn/crit for levels
+}
 ```
 
 ##### Configuration
