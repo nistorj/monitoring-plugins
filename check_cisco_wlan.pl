@@ -9,11 +9,12 @@
 # MIB:		Based on CISCO-LWAPP-WLAN-MIB
 # Vendors:	Cisco
 #
-# Version:	0.01
+# Version:	0.02
 #
 # History:
 #
 #  2017-05-21	0.01	Initial
+#  2017-06-22	0.02	Added IPv6 support.
 #
 #
 # --
@@ -30,6 +31,8 @@ use Monitoring::Plugin;
 use Monitoring::Plugin::Getopt;
 use Monitoring::Plugin::Threshold;
 use Net::SNMP qw(oid_lex_sort);
+use Socket qw( :DEFAULT );
+use Socket6;
 #
 use strict;
 use constant VERSION => '0.01';
@@ -47,6 +50,7 @@ my $np = Monitoring::Plugin->new(
 		     " [-s|--snmpcomm <comm>] [-d|--debug] [-v|--verbose]" .
 		     " [-n|--ssid <SSIDname>] [-a|--all]" .
 		     " [-w|--warning <clientCnt>] [-c|--critical <clientCnt>]" .
+		     " [-4] [-6]" .
 		     "",
 	version	  => VERSION,
 	url	  => 'https://github.com/nistorj/monitoring-plugins',
@@ -136,6 +140,20 @@ $np->add_arg(
 );
 
 $np->add_arg(
+	spec	 => 'v4|4',
+	help	 => '-4, --v4 Force polling over IPv4',
+	default	 => undef,
+	required => 0
+);
+
+$np->add_arg(
+	spec	 => 'v6|6',
+	help	 => '-6, --v6 Force polling over IPv6',
+	default	 => undef,
+	required => 0
+);
+
+$np->add_arg(
 	spec	 => 'warning|w=s',
 	help	 => 'warning threshold',
 	required => 0
@@ -171,6 +189,8 @@ if( defined( $np->opts->{'debug'} ) &&
 	print " OPT:     result: " . $np->opts->{'result'} . "\n";
 	print " OPT:        all: " . $np->opts->{'all'} . "\n";
 	print " OPT:       ssid: " . $np->opts->{'ssid'} . "\n";
+	print " OPT:         v4: " . $np->opts->{'v4'} . "\n";
+	print " OPT:         v6: " . $np->opts->{'v6'} . "\n";
 	print " OPT:       warn: " . $np->opts->{'warning'} . "\n";
 	print " OPT:       crit: " . $np->opts->{'critical'} . "\n";
 }
@@ -206,6 +226,32 @@ my %wlan;
 
 # -----------------------------------------------------------------------------
 # PROG: Construct SNMP session information.
+
+
+my $addrHost	= $np->opts->{'host'};
+my @addrInfo	= getaddrinfo($addrHost, 'snmp', AF_UNSPEC, SOCK_STREAM, 'udp');
+$np->plugin_exit( UNKNOWN, "Cannot resolve $addrHost" ) unless( scalar(@addrInfo) >= 5 );
+
+if( ( ($addrInfo[0] == AF_INET6) &&
+      (not defined($np->opts->{'v4'})) ) || defined($np->opts->{'v6'}) )
+{
+	$np->opts->{'snmptransport'} = "udp6";
+} 
+elsif( ( ($addrInfo[0] == AF_INET) &&
+       (not defined($np->opts->{'v6'})) ) || defined($np->opts->{'v4'}) )
+{
+	$np->opts->{'snmptransport'} = "udp";
+} else {
+	$np->plugin_exit( UNKNOWN, "Address family cann't resolve $addrHost" );
+}
+
+# DBG: What transport method?
+if( $np->opts->{'debug'} )
+{
+	print "SNMP: Transport will be " . $np->opts->{'snmptransport'} . "\n";
+}
+	
+
 
 my @snmpopts;
 
@@ -268,6 +314,7 @@ my ($session, $error)	= Net::SNMP->session(
 	-retries	=> 1,
 	-hostname	=> $np->opts->{'host'},
 	-version	=> $np->opts->{'snmpver'},
+	-domain		=> $np->opts->{'snmptransport'},
 	-debug		=> 0x00,
 	@snmpopts
 );
@@ -370,7 +417,7 @@ sub _wlan_ssid
 	if( $ssidMatch == 0 )
 	{
 		$np->plugin_exit( UNKNOWN, "WLAN error: Does ssid exist ".
-					   " on this controller?" );
+					   "on this controller?" );
 	}
 
 	if( $np->opts->{'verbose'} )

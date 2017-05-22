@@ -356,7 +356,7 @@ FILE: /etc/icinga2/include/plugins-contrib.d/cisco_wlan.conf
 
 /******************************************************************************
  * Icinga 2                                                                   *
- *
+ *                                                                            *
  */
 
 object CheckCommand "cisco_wlan" {
@@ -368,47 +368,83 @@ object CheckCommand "cisco_wlan" {
                         required = true
                         description = "hostname or ip address of WLC"
                 }
-                "-r" = {
-                        value = "$wlan_res$"
+                "-P" = {
+                        value = "$wlan_snmpver$"
                         required = false
-                        description = "Specific number of matches"
+			description = "SNMP version to use"
                 }
                 "-d" = {
                         value = "$wlan_debug$"
                         required = false
+			description = "Do we enable debug?"
                 }
+                "-r" = {
+                        value = "$wlan_res$"
+                        required = false
+                        description = "Match specific number of clients"
+		}
                 "-s" = {
                         value = "$wlan_snmpcom$"
                         required = true
+			description = "SNMP community to use, v3 include user,pass,auth, etc"
                 }
-                "-P" = {
-                        value = "$wlan_snmpver$"
-                        required = true
+		"-v" = {
+			value = "$wlan_verbose$"
+			required = false
+			description = "Do we enable verbose?"
+		}
+
+		# ------------------------------------------
+		# Plugin Specific Options
+		"-4" = {
+			value = "$wlan_v4$"
+			required = false
+			description = "Force IPv4 transport (udp)"
+		}
+		"-6" = {
+			value = "$wlan_v6$"
+			required = false
+			description = "Force IPv6 transport (udp6)"
+		}
+		"-a" = {
+			value = "$wlan_all$"
+			required = false
+			description = "Count all clients on WLC"
                 }
+		"-n" = {
+			value = "$wlan_ssid$"
+			required = false
+			description = "Count clients for specific SSID"
+		}
                 "-A" = {
                         value = "$wlan_clienthigh$"
                         required = false
+			description = "Enable alerting on client count too high"
                 }
                 "-B" = {
                         value = "$wlan_clientlow$"
                         required = false
+			description = "Enable alerting on client count too low"
                 }
         }
 
         # Variables available for configuration, and their default
 
         vars.wlan_snmpcom        = "$wlan_snmpcom$"
-        vars.wlan_snmpver        = "$wlan_snmpver$"
+        # vars.wlan_snmpver        = "$wlan_snmpver$"
         vars.wlan_crit           = ",,1"
         vars.wlan_warn           = ",,2"
 
         # VARS: Entries which don't have a default
         #       These are configured in the ${host}.conf file as variables.
 
-	# vars.wlan_ssid	 = "GuestNetwork" # name of SSID
+        # vars.wlan_ssid         = "GuestNetwork" # name of SSID
+	# vars.wlan_all		 = true/false # Total count on WLC
         # vars.wlan_debug        = true/false
         # vars.wlan_clienthigh   = true/false # use warn/crit for levels
         # vars.wlan_clientlow    = true/false # use warn/crit for levels
+	# vars.wlan_v4		 = true/false # Force IPv4 transport
+	# vars.wlan_v6		 = true/false # Force IPv4 transport
 }
 ```
 
