@@ -1,0 +1,18 @@
+name: check_cisco_wlan
+description: "file:///README.md"
+url: "https://github.com/nistorj/monitoring-plugins/check_cisco_wlan"
+tags: ~
+vendor: Cisco
+target: Wireless
+type: Plugin
+license: gplv3
+releases: 
+  - 
+    name: 0.02
+    description: "0.02 Release"
+    files: 
+      - 
+        name: check_cisco_wlan.pl
+        url: "file:///check_cisco_wlan.pl"
+        description: "Plugin to monitor Cisco WLC SSID and client counts"
+        checksum: c0ef089cab14583185ac2c92db53d5b6
