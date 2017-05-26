@@ -1,6 +1,6 @@
 name: check_cisco_wlan
 description: "file:///README.md"
-url: "https://github.com/nistorj/monitoring-plugins/check_cisco_wlan"
+url: "https://github.com/nistorj/monitoring-plugins/tree/master/check_cisco_wlan"
 tags: ~
 vendor: Cisco
 target: Wireless
